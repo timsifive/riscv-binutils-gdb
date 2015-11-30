@@ -71,14 +71,14 @@ static unsigned elf_flags = 0;
 
 struct riscv_set_options
 {
-  int pic; /* Generate position-independent code.  */
-  int rvc; /* Generate RVC code.  */
+  bfd_boolean pic; /* Generate position-independent code.  */
+  bfd_boolean rvc; /* Generate RVC code.  */
 };
 
 static struct riscv_set_options riscv_opts =
 {
-  0,	/* pic */
-  0,	/* rvc */
+  FALSE,	/* pic */
+  FALSE,	/* rvc */
 };
 
 static void
@@ -86,6 +86,8 @@ riscv_set_rvc (bfd_boolean rvc_value)
 {
   if (rvc_value)
     elf_flags |= EF_RISCV_RVC;
+  else
+    elf_flags &= ~EF_RISCV_RVC;
 
   riscv_opts.rvc = rvc_value;
 }
@@ -142,7 +144,7 @@ riscv_set_arch (const char *arg)
   char *p = uppercase;
   const char *all_subsets = "IMAFDC";
   const char *extension = NULL;
-  int rvc = 0;
+  bfd_boolean rvc = FALSE;
   int i;
 
   for (i = 0; uppercase[i]; i++)
@@ -208,7 +210,7 @@ riscv_set_arch (const char *arg)
 	  const char subset[] = {*p, 0};
 	  riscv_add_subset (subset);
 	  if (*p == 'C')
-	    rvc = 1;
+	    rvc = TRUE;
 	  all_subsets++;
 	  p++;
 	}
@@ -245,12 +247,12 @@ const char line_comment_chars[] = "#";
 /* This array holds machine specific line separator characters.  */
 const char line_separator_chars[] = ";";
 
-/* Chars that can be used to separate mant from exp in floating point nums */
+/* Chars that can be used to separate mant from exp in floating point nums.  */
 const char EXP_CHARS[] = "eE";
 
-/* Chars that mean this number is a floating point constant */
-/* As in 0f12.456 */
-/* or    0d1.2345e12 */
+/* Chars that mean this number is a floating point constant.
+   As in 0f12.456
+   or    0d1.2345e12  */
 const char FLT_CHARS[] = "rRsSfFdDxXpP";
 
 /* Macros for encoding relaxation state for RVC branches and far jumps.  */
@@ -384,9 +386,9 @@ relaxed_branch_length (fragS *fragp, asection *sec, int update)
       bfd_vma rvc_range = jump ? RVC_JUMP_REACH : RVC_BRANCH_REACH;
       val -= fragp->fr_address + fragp->fr_fix;
 
-      if (rvc && (bfd_vma)(val + rvc_range/2) < rvc_range)
+      if (rvc && (bfd_vma)(val + rvc_range / 2) < rvc_range)
 	length = 2;
-      else if ((bfd_vma)(val + RISCV_BRANCH_REACH/2) < RISCV_BRANCH_REACH)
+      else if ((bfd_vma)(val + RISCV_BRANCH_REACH / 2) < RISCV_BRANCH_REACH)
 	length = 4;
       else if (!jump && rvc)
 	length = 6;
@@ -1643,8 +1645,8 @@ alu_op:
 		  normalize_constant_expr (imm_expr);
 		  if (imm_expr->X_op != O_constant
 		      || (*args == '0' && imm_expr->X_add_number != 0)
-		      || imm_expr->X_add_number >= (signed)RISCV_IMM_REACH/2
-		      || imm_expr->X_add_number < -(signed)RISCV_IMM_REACH/2)
+		      || imm_expr->X_add_number >= (signed)RISCV_IMM_REACH / 2
+		      || imm_expr->X_add_number < -(signed)RISCV_IMM_REACH / 2)
 		    break;
 		}
 
@@ -2322,8 +2324,13 @@ md_show_usage (FILE *stream)
 RISC-V options:\n\
   -m32           assemble RV32 code\n\
   -m64           assemble RV64 code (default)\n\
+  -march=[FLAGS] set the ISA string (available extensions)\n\
+  -mrvc          generate RVC (compressed) code\n\n
+  -mno-rvc       don't generate RVC (compressed) code\n\n
   -fpic          generate position-independent code\n\
   -fno-pic       don't generate position-independent code (default)\n\
+  -msoft-float   use soft float ABI\n\
+  -mhard-float   use hard float ABI\n\
 "));
 }
 
